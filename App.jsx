@@ -358,7 +358,7 @@ return (
 <div className="flex items-center gap-2">
 <Logo size={32} />
 <div>
-<h1 className="text-lg font-bold text-cyan-400">Jazz Guitar v3</h1>
+<h1 className="text-lg font-bold text-cyan-400">Jazz Guitar v4</h1>
 <p className="text-xs text-slate-400">Created by Jerh Collins</p>
 </div>
 </div>

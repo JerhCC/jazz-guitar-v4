@@ -9,11 +9,10 @@ export function useGuitarAudio() {
     return ctxRef;
   };
 
-  // Small-room reverb impulse response, generated once and cached.
   const getReverbIR = (ctx) => {
     if (irRef) return irRef;
     const sr = ctx.sampleRate;
-    const len = Math.floor(sr * 1.4);
+    const len = Math.floor(sr * 1.5);
     const ir = ctx.createBuffer(2, len, sr);
     for (let ch = 0; ch < 2; ch++) {
       const d = ir.getChannelData(ch);
@@ -26,7 +25,6 @@ export function useGuitarAudio() {
     return ir;
   };
 
-  // Shared output bus: compressor -> dry + reverb -> speakers.
   const makeBus = (ctx) => {
     const master = ctx.createGain();
     master.gain.value = 0.5;
@@ -35,14 +33,14 @@ export function useGuitarAudio() {
     master.connect(comp);
 
     const dry = ctx.createGain();
-    dry.gain.value = 0.85;
+    dry.gain.value = 0.8;
     comp.connect(dry);
     dry.connect(ctx.destination);
 
     const convolver = ctx.createConvolver();
     convolver.buffer = getReverbIR(ctx);
     const wet = ctx.createGain();
-    wet.gain.value = 0.25;
+    wet.gain.value = 0.3;
     comp.connect(convolver);
     convolver.connect(wet);
     wet.connect(ctx.destination);
@@ -60,7 +58,7 @@ export function useGuitarAudio() {
     const delay = new Float32Array(N);
     for (let i = 0; i < N; i++) delay[i] = Math.random() * 2 - 1;
     let idx = 0;
-    const damp = 0.993;
+    const damp = 0.985;
     for (let i = 0; i < len; i++) {
       const cur = delay[idx];
       const nxt = delay[(idx + 1) % N];
@@ -71,15 +69,23 @@ export function useGuitarAudio() {
     const src = ctx.createBufferSource();
     src.buffer = buf;
 
+    // Static ceiling on harsh highs.
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 2900;
+    lp.frequency.value = 2000;
+
+    // Moving filter: bright at the pluck, mellowing as the note rings.
+    const sweep = ctx.createBiquadFilter();
+    sweep.type = 'lowpass';
+    sweep.Q.value = 0.7;
+    sweep.frequency.setValueAtTime(2400, when);
+    sweep.frequency.exponentialRampToValueAtTime(900, when + 1.0);
 
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, when);
-    g.gain.linearRampToValueAtTime(0.9, when + 0.008);
+    g.gain.linearRampToValueAtTime(0.9, when + 0.014);
 
-    src.connect(lp); lp.connect(g); g.connect(dest);
+    src.connect(lp); lp.connect(sweep); sweep.connect(g); g.connect(dest);
     src.start(when);
   };
 

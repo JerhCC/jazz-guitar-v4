@@ -12,12 +12,12 @@ export function useGuitarAudio() {
   const getReverbIR = (ctx) => {
     if (irRef) return irRef;
     const sr = ctx.sampleRate;
-    const len = Math.floor(sr * 1.5);
+    const len = Math.floor(sr * 2.0);
     const ir = ctx.createBuffer(2, len, sr);
     for (let ch = 0; ch < 2; ch++) {
       const d = ir.getChannelData(ch);
       for (let i = 0; i < len; i++) {
-        const decay = Math.pow(1 - i / len, 2.2);
+        const decay = Math.pow(1 - i / len, 2.0);
         d[i] = (Math.random() * 2 - 1) * decay;
       }
     }
@@ -33,14 +33,14 @@ export function useGuitarAudio() {
     master.connect(comp);
 
     const dry = ctx.createGain();
-    dry.gain.value = 0.8;
+    dry.gain.value = 0.75;
     comp.connect(dry);
     dry.connect(ctx.destination);
 
     const convolver = ctx.createConvolver();
     convolver.buffer = getReverbIR(ctx);
     const wet = ctx.createGain();
-    wet.gain.value = 0.3;
+    wet.gain.value = 0.38;
     comp.connect(convolver);
     convolver.connect(wet);
     wet.connect(ctx.destination);
@@ -48,45 +48,45 @@ export function useGuitarAudio() {
     return master;
   };
 
-  const pluck = (ctx, freq, when, dest) => {
-    const sr = ctx.sampleRate;
-    const dur = 2.6;
-    const N = Math.max(2, Math.round(sr / freq));
-    const len = Math.floor(sr * dur);
-    const buf = ctx.createBuffer(1, len, sr);
-    const d = buf.getChannelData(0);
-    const delay = new Float32Array(N);
-    for (let i = 0; i < N; i++) delay[i] = Math.random() * 2 - 1;
-    let idx = 0;
-    const damp = 0.985;
-    for (let i = 0; i < len; i++) {
-      const cur = delay[idx];
-      const nxt = delay[(idx + 1) % N];
-      d[i] = cur;
-      delay[idx] = 0.5 * (cur + nxt) * damp;
-      idx = (idx + 1) % N;
-    }
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
+  // Additive synthesis: warm fundamental + soft harmonics, no pluck transient.
+  const note = (ctx, freq, when, dest) => {
+    const dur = 3.0;
 
-    // Static ceiling on harsh highs.
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 2000;
+    // Relative amplitudes of harmonics 1..4 — fundamental dominant, highs gentle.
+    const partials = [
+      { mult: 1, amp: 1.0 },
+      { mult: 2, amp: 0.32 },
+      { mult: 3, amp: 0.14 },
+      { mult: 4, amp: 0.06 },
+    ];
 
-    // Moving filter: bright at the pluck, mellowing as the note rings.
-    const sweep = ctx.createBiquadFilter();
-    sweep.type = 'lowpass';
-    sweep.Q.value = 0.7;
-    sweep.frequency.setValueAtTime(2400, when);
-    sweep.frequency.exponentialRampToValueAtTime(900, when + 1.0);
+    // Shared amplitude envelope: soft attack, smooth exponential decay.
+    const vca = ctx.createGain();
+    vca.gain.setValueAtTime(0.0001, when);
+    vca.gain.linearRampToValueAtTime(0.5, when + 0.025);
+    vca.gain.exponentialRampToValueAtTime(0.18, when + 0.6);
+    vca.gain.exponentialRampToValueAtTime(0.0001, when + dur);
 
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, when);
-    g.gain.linearRampToValueAtTime(0.9, when + 0.014);
+    // Gentle low-pass to keep everything mellow.
+    const tone = ctx.createBiquadFilter();
+    tone.type = 'lowpass';
+    tone.frequency.value = 2200;
+    tone.Q.value = 0.5;
 
-    src.connect(lp); lp.connect(sweep); sweep.connect(g); g.connect(dest);
-    src.start(when);
+    vca.connect(tone);
+    tone.connect(dest);
+
+    partials.forEach((p) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq * p.mult;
+      const g = ctx.createGain();
+      g.gain.value = p.amp * 0.5;
+      osc.connect(g);
+      g.connect(vca);
+      osc.start(when);
+      osc.stop(when + dur + 0.1);
+    });
   };
 
   const scheduleChord = (frets, when) => {
@@ -96,7 +96,7 @@ export function useGuitarAudio() {
     frets.forEach((f, i) => {
       if (f < 0) return;
       const freq = STRING_FREQ[i] * Math.pow(2, f / 12);
-      pluck(ctx, freq, when + s * 0.03, master);
+      note(ctx, freq, when + s * 0.035, master);
       s++;
     });
   };
@@ -128,7 +128,7 @@ export function useGuitarAudio() {
     const seq = [...up, ...up.slice(0, -1).reverse()];
     const now = ctx.currentTime + 0.05;
     seq.forEach((semi, i) => {
-      pluck(ctx, base * Math.pow(2, semi / 12), now + i * 0.26, master);
+      note(ctx, base * Math.pow(2, semi / 12), now + i * 0.30, master);
     });
   };
 

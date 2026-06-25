@@ -33,14 +33,14 @@ export function useGuitarAudio() {
     master.connect(comp);
 
     const dry = ctx.createGain();
-    dry.gain.value = 0.75;
+    dry.gain.value = 0.8;
     comp.connect(dry);
     dry.connect(ctx.destination);
 
     const convolver = ctx.createConvolver();
     convolver.buffer = getReverbIR(ctx);
     const wet = ctx.createGain();
-    wet.gain.value = 0.38;
+    wet.gain.value = 0.32;
     comp.connect(convolver);
     convolver.connect(wet);
     wet.connect(ctx.destination);
@@ -48,44 +48,39 @@ export function useGuitarAudio() {
     return master;
   };
 
-  // Additive synthesis: warm fundamental + soft harmonics, no pluck transient.
+  // Additive synthesis with per-harmonic decay = plucked-string behaviour.
   const note = (ctx, freq, when, dest) => {
-    const dur = 3.0;
-
-    // Relative amplitudes of harmonics 1..4 — fundamental dominant, highs gentle.
+    // Each partial: amplitude + how long it sustains.
+    // Higher harmonics fade faster, so the note mellows as it rings (like a real string).
     const partials = [
-      { mult: 1, amp: 1.0 },
-      { mult: 2, amp: 0.32 },
-      { mult: 3, amp: 0.14 },
-      { mult: 4, amp: 0.06 },
+      { mult: 1, amp: 1.0,  dur: 3.2 },
+      { mult: 2, amp: 0.35, dur: 2.0 },
+      { mult: 3, amp: 0.16, dur: 1.2 },
+      { mult: 4, amp: 0.08, dur: 0.7 },
+      { mult: 5, amp: 0.04, dur: 0.4 },
     ];
 
-    // Shared amplitude envelope: soft attack, smooth exponential decay.
-    const vca = ctx.createGain();
-    vca.gain.setValueAtTime(0.0001, when);
-    vca.gain.linearRampToValueAtTime(0.5, when + 0.025);
-    vca.gain.exponentialRampToValueAtTime(0.18, when + 0.6);
-    vca.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-
-    // Gentle low-pass to keep everything mellow.
     const tone = ctx.createBiquadFilter();
     tone.type = 'lowpass';
-    tone.frequency.value = 2200;
+    tone.frequency.value = 2600;
     tone.Q.value = 0.5;
-
-    vca.connect(tone);
     tone.connect(dest);
 
     partials.forEach((p) => {
       const osc = ctx.createOscillator();
       osc.type = 'sine';
       osc.frequency.value = freq * p.mult;
+
       const g = ctx.createGain();
-      g.gain.value = p.amp * 0.5;
+      // Fast attack, then continuous decay from the very start — no sustain plateau.
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.linearRampToValueAtTime(p.amp * 0.5, when + 0.009);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + p.dur);
+
       osc.connect(g);
-      g.connect(vca);
+      g.connect(tone);
       osc.start(when);
-      osc.stop(when + dur + 0.1);
+      osc.stop(when + p.dur + 0.1);
     });
   };
 

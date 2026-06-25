@@ -48,21 +48,19 @@ export function useGuitarAudio() {
     return master;
   };
 
-  // Additive synthesis with per-harmonic decay = plucked-string behaviour.
+  // Additive synthesis tuned toward plucked guitar: rounder lows, less top sparkle.
   const note = (ctx, freq, when, dest) => {
-    // Each partial: amplitude + how long it sustains.
-    // Higher harmonics fade faster, so the note mellows as it rings (like a real string).
     const partials = [
       { mult: 1, amp: 1.0,  dur: 3.2 },
-      { mult: 2, amp: 0.35, dur: 2.0 },
-      { mult: 3, amp: 0.16, dur: 1.2 },
-      { mult: 4, amp: 0.08, dur: 0.7 },
-      { mult: 5, amp: 0.04, dur: 0.4 },
+      { mult: 2, amp: 0.40, dur: 2.0 },
+      { mult: 3, amp: 0.18, dur: 1.2 },
+      { mult: 4, amp: 0.04, dur: 0.6 },
+      { mult: 5, amp: 0.015, dur: 0.35 },
     ];
 
     const tone = ctx.createBiquadFilter();
     tone.type = 'lowpass';
-    tone.frequency.value = 2600;
+    tone.frequency.value = 2400;
     tone.Q.value = 0.5;
     tone.connect(dest);
 
@@ -72,9 +70,8 @@ export function useGuitarAudio() {
       osc.frequency.value = freq * p.mult;
 
       const g = ctx.createGain();
-      // Fast attack, then continuous decay from the very start — no sustain plateau.
       g.gain.setValueAtTime(0.0001, when);
-      g.gain.linearRampToValueAtTime(p.amp * 0.5, when + 0.009);
+      g.gain.linearRampToValueAtTime(p.amp * 0.5, when + 0.013);
       g.gain.exponentialRampToValueAtTime(0.0001, when + p.dur);
 
       osc.connect(g);

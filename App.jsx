@@ -20,18 +20,18 @@ return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="c
 function Logo({ size = 42 }) {
 return (
 <svg width={size} height={size} viewBox="0 0 64 64" className="shrink-0" role="img" aria-label="Jazz Guitar Chords logo">
-<rect x="2" y="2" width="60" height="60" rx="14" fill="#1e293b" stroke="#334155" strokeWidth="1.5" />
+<rect x="2" y="2" width="60" height="60" rx="14" fill="#0f2b27" stroke="#134e4a" strokeWidth="1.5" />
 <circle cx="50" cy="11" r="2.6" fill="none" stroke="#22d3ee" strokeWidth="1.6" />
-<rect x="13" y="16" width="38" height="3" rx="1.5" fill="#cbd5e1" />
-{[14, 23, 32, 41, 50].map((x, i) => (
-<line key={`s${i}`} x1={x} y1="18" x2={x} y2="52" stroke="#64748b" strokeWidth="1.4" />
+<rect x="13" y="16" width="38" height="3" rx="1.5" fill="#5eead4" />
+{[14, 21.2, 28.4, 35.6, 42.8, 50].map((x, i) => (
+<line key={`s${i}`} x1={x} y1="18" x2={x} y2="52" stroke="#3f8f86" strokeWidth="1.3" />
 ))}
 {[28, 38, 48].map((y, i) => (
-<line key={`f${i}`} x1="14" y1={y} x2="50" y2={y} stroke="#475569" strokeWidth="1.4" />
+<line key={`f${i}`} x1="14" y1={y} x2="50" y2={y} stroke="#2a6157" strokeWidth="1.4" />
 ))}
-<circle cx="23" cy="23" r="4.3" fill="#FF6B35" stroke="#0f172a" strokeWidth="1" />
-<circle cx="41" cy="33" r="4.3" fill="#FF6B35" stroke="#0f172a" strokeWidth="1" />
-<circle cx="32" cy="43" r="4.3" fill="#FF6B35" stroke="#0f172a" strokeWidth="1" />
+<circle cx="21.2" cy="23" r="4" fill="#10b981" stroke="#06281f" strokeWidth="1" />
+<circle cx="35.6" cy="33" r="4" fill="#06b6d4" stroke="#06281f" strokeWidth="1" />
+<circle cx="28.4" cy="43" r="4" fill="#10b981" stroke="#06281f" strokeWidth="1" />
 </svg>
 );
 }
@@ -354,16 +354,14 @@ if (CHORDS[name]) audio.scheduleChord(CHORDS[name].frets, now + i * spb);
 return (
 <div className="flex flex-col h-screen bg-slate-900 text-slate-100 overflow-hidden">
 <header className="sticky top-0 z-50 bg-slate-800 border-b border-slate-700 px-4 py-3 shadow-lg">
-<div className="flex items-center justify-between gap-3">
-<div className="flex items-center gap-2">
+<div className="relative flex items-center justify-center gap-2">
 <Logo size={32} />
-<div>
+<div className="text-center">
 <h1 className="text-lg font-bold text-cyan-400">Jazz Guitar v4</h1>
 <p className="text-xs text-slate-400">Created by Jerh Collins</p>
 </div>
-</div>
 {tab !== 'library' && (
-<div className="flex items-center gap-2 text-xs">
+<div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs">
 <label className="flex items-center gap-1 cursor-pointer select-none">
 <input type="checkbox" checked={showBarre} onChange={(e) => setShowBarre(e.target.checked)} className="w-4 h-4" />
 <span className="text-slate-300">Barre</span>
